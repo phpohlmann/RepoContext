@@ -52,7 +52,7 @@ export async function scanDirectory(
       name: entry.name,
       path: currentPath,
       kind: "directory",
-      children: children,
+      children: children.filter((child): child is FileNode => child !== null),
     };
   }
 

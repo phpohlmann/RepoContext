@@ -1,40 +1,57 @@
 "use client";
 
 import { DropZone } from "@/components/explorer/drop-zone";
+import { FileTree } from "@/components/explorer/file-tree";
+import { OutputViewer } from "@/components/preview/output-viewer";
+import { Header } from "@/components/layout/header";
 import { useRepoStore } from "@/store/use-repo-store";
 
 export default function RepoContextPage() {
   const { isProcessing, root } = useRepoStore();
 
   return (
-    <main className="max-w-6xl mx-auto p-8 space-y-8">
-      <header className="space-y-2">
-        <h1 className="text-4xl font-bold tracking-tight text-neutral-900">
-          RepoContext
-        </h1>
-        <p className="text-neutral-500 text-lg">
-          Turn your codebase into LLM-ready context.
-        </p>
-      </header>
+    <div className="min-h-screen bg-background">
+      <Header />
 
-      {!root && <DropZone />}
+      <main className="max-w-5xl mx-auto p-6 md:p-12">
+        {!root && !isProcessing && (
+          <section className="space-y-8 animate-in fade-in duration-700">
+            <div className="text-center space-y-4">
+              <h2 className="text-4xl font-extrabold tracking-tight">
+                Package your code for AI.
+              </h2>
+              <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+                Drag and drop your repository folder to generate a clean,
+                context-rich Markdown file for ChatGPT or Claude.
+              </p>
+            </div>
+            <DropZone />
+          </section>
+        )}
 
-      {isProcessing && (
-        <div className="flex items-center justify-center p-12">
-          <p className="animate-pulse text-neutral-400 font-medium">
-            Analyzing repository structure...
-          </p>
-        </div>
-      )}
+        {isProcessing && (
+          <div className="flex flex-col items-center justify-center p-24 space-y-4">
+            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            <p className="text-muted-foreground font-medium animate-pulse">
+              Parsing repository structure...
+            </p>
+          </div>
+        )}
 
-      {root && (
-        <div className="p-4 border rounded-lg bg-neutral-50 border-neutral-200">
-          <p className="text-sm text-neutral-600 italic">
-            Success! File tree for{" "}
-            <span className="font-bold">{root.name}</span> ready for selection.
-          </p>
-        </div>
-      )}
-    </main>
+        {root && (
+          <div className="space-y-6 animate-in zoom-in-95 duration-300">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Project Explorer</h3>
+              <span className="text-xs bg-muted px-2 py-1 rounded-md text-muted-foreground">
+                Root: {root.name}
+              </span>
+            </div>
+            <FileTree />
+          </div>
+        )}
+      </main>
+
+      <OutputViewer />
+    </div>
   );
 }

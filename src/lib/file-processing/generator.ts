@@ -8,17 +8,13 @@ export async function generateMarkdown(
   output += `Generated on: ${new Date().toLocaleString()}\n\n`;
 
   async function traverse(node: FileNode) {
-    // Only process files that are selected
     if (node.kind === "file" && selectedPaths.has(node.path)) {
       output += `## File: ${node.path}\n`;
       output += "---\n";
 
-      // We wrap the code in backticks for Markdown formatting
       const extension = node.name.split(".").pop() || "";
       output += "```" + extension + "\n";
 
-      // In a real scenario, we read the actual file content here
-      // node.handle is the FileSystemFileHandle from the browser API
       const content = node.content || "// [Content could not be loaded]";
       output += content + "\n";
 
