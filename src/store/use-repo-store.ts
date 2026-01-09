@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { countTokens } from "@/lib/tokenizer";
 
 export interface FileNode {
   name: string;
@@ -54,6 +55,23 @@ export const useRepoStore = create<RepoState>((set, get) => ({
       root: node,
       selectedPaths: node ? new Set(getAllFilePaths(node)) : new Set(),
     }),
+
+  updateTokens: async () => {
+    const { root, selectedPaths } = get();
+    if (!root) return;
+
+    let total = 0;
+
+    const countSelected = (node: FileNode) => {
+      if (node.kind === "file" && selectedPaths.has(node.path)) {
+        total += countTokens(node.content || "");
+      }
+      node.children?.forEach(countSelected);
+    };
+
+    countSelected(root);
+    set({ totalTokens: total });
+  },
 
   setProcessing: (status) => set({ isProcessing: status }),
 
