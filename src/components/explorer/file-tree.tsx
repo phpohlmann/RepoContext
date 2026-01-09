@@ -36,7 +36,7 @@ export function FileTree() {
         </div>
       </div>
 
-      <div className="p-2 max-h-[600px] overflow-y-auto">
+      <div className="p-2 max-h-150 overflow-y-auto">
         <TreeNode node={root} level={0} />
       </div>
     </div>

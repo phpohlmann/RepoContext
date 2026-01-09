@@ -31,7 +31,7 @@ export function SettingsSidebar() {
           Settings
         </button>
       </SheetTrigger>
-      <SheetContent className="bg-white border-l border-neutral-200 w-[400px]">
+      <SheetContent className="bg-white border-l border-neutral-200 w-100">
         <SheetHeader>
           <SheetTitle className="text-xl font-bold text-neutral-900">
             Project Rules

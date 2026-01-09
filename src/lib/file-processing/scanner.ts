@@ -14,7 +14,7 @@ export async function scanDirectory(
   if (entry.isFile) {
     const fileEntry = entry as FileSystemFileEntry;
     return new Promise((resolve) => {
-      fileEntry.file((file) => {
+      fileEntry.file(() => {
         resolve({
           name: entry.name,
           path: currentPath,
