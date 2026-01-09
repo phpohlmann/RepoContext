@@ -19,6 +19,7 @@ export async function scanDirectory(
           name: entry.name,
           path: currentPath,
           kind: "file",
+          entry: entry,
         });
       });
     });
@@ -53,6 +54,7 @@ export async function scanDirectory(
       path: currentPath,
       kind: "directory",
       children: children.filter((child): child is FileNode => child !== null),
+      entry: entry,
     };
   }
 

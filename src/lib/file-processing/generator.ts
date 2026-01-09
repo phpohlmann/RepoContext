@@ -15,16 +15,19 @@ export async function generateMarkdown(
       const extension = node.name.split(".").pop() || "";
       output += "```" + extension + "\n";
 
-      const content = node.content || "// [Content could not be loaded]";
-      output += content + "\n";
+      // Use the content from the node (which should now be populated)
+      if (node.content) {
+        output += node.content + "\n";
+      } else {
+        output += "// [Content empty or not yet loaded]\n";
+      }
 
       output += "```\n\n";
     }
 
     if (node.children) {
-      for (const child of node.children) {
-        await traverse(child);
-      }
+      // Parallel traversal for speed
+      await Promise.all(node.children.map((child) => traverse(child)));
     }
   }
 
