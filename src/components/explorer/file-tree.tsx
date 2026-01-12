@@ -1,3 +1,4 @@
+// MODIFICATION START
 "use client";
 
 import React from "react";
@@ -40,7 +41,7 @@ export function FileTree() {
             size="sm"
             onClick={selectAll}
             disabled={isProcessing}
-            className="h-8 text-xs gap-2 hover:bg-secondary"
+            className="h-8 text-xs gap-2 hover:bg-secondary cursor-pointer" // Added cursor-pointer
           >
             <CheckSquare size={14} />
             All
@@ -50,7 +51,7 @@ export function FileTree() {
             size="sm"
             onClick={deselectAll}
             disabled={isProcessing}
-            className="h-8 text-xs gap-2 hover:bg-secondary"
+            className="h-8 text-xs gap-2 hover:bg-secondary cursor-pointer" // Added cursor-pointer
           >
             <Square size={14} />
             None

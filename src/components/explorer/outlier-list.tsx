@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Flame, Info, FileWarning, X } from "lucide-react";
 import {
   Popover,
@@ -16,14 +16,25 @@ import { cn } from "@/lib/utils";
 export function OutlierList() {
   const { root, selectedPaths, togglePath } = useRepoStore();
   const [dismissedPaths, setDismissedPaths] = useState<Set<string>>(new Set());
+  const [isOpen, setIsOpen] = useState(false);
+  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Rule: Hide if no folder is loaded OR if nothing is selected (as requested)
   if (!root || selectedPaths.size === 0) return null;
+
+  const handleMouseEnter = () => {
+    if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+    setIsOpen(true);
+  };
+
+  const handleMouseLeave = () => {
+    closeTimeoutRef.current = setTimeout(() => {
+      setIsOpen(false);
+    }, 200);
+  };
 
   const getOutliers = (node: FileNode): FileNode[] => {
     const files: FileNode[] = [];
     const traverse = (n: FileNode) => {
-      // Find files that have been tokenized and are not dismissed
       if (n.kind === "file" && n.tokens && !dismissedPaths.has(n.path)) {
         files.push(n);
       }
@@ -45,16 +56,20 @@ export function OutlierList() {
   if (outliers.length === 0) return null;
 
   return (
-    <div className="flex items-center">
-      <Popover>
+    <div className="flex items-center" onMouseLeave={handleMouseLeave}>
+      <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
-          <button className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-orange-500 hover:text-orange-600 transition-all rounded-md hover:bg-orange-500/10 animate-pulse cursor-pointer">
+          <button
+            onMouseEnter={handleMouseEnter}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-orange-500 hover:text-orange-600 transition-all rounded-md hover:bg-orange-500/10 animate-pulse cursor-pointer"
+          >
             <Flame className="w-4 h-4" />
             <span>Large Files</span>
           </button>
         </PopoverTrigger>
         <PopoverContent
-          className="w-80 p-0 bg-background border-border shadow-xl overflow-hidden"
+          onMouseEnter={handleMouseEnter}
+          className="w-80 p-0 bg-background border-border shadow-xl overflow-hidden pointer-events-auto"
           align="end"
         >
           <div className="p-4 bg-orange-500/5 border-b border-border flex items-center gap-2">
@@ -116,9 +131,7 @@ export function OutlierList() {
 
           <div className="p-3 bg-muted/30 text-[10px] text-muted-foreground flex items-center gap-2">
             <Info size={12} />
-            <span>
-              Uncheck to save tokens, or dismiss to hide from this list.
-            </span>
+            <span>Uncheck to save tokens, or dismiss to hide.</span>
           </div>
         </PopoverContent>
       </Popover>
