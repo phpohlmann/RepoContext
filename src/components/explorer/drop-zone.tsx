@@ -1,3 +1,4 @@
+// MODIFICATION START
 "use client";
 
 import React, { useState } from "react";
@@ -41,26 +42,29 @@ export function DropZone() {
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       className={cn(
-        "relative flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-xl transition-all duration-200",
-        "bg-neutral-50/50 border-neutral-200 hover:border-neutral-300",
-        isDragging && "border-neutral-900 bg-neutral-100/50 scale-[1.01]"
+        "relative flex flex-col items-center justify-center w-full h-72 border-2 border-dashed rounded-xl transition-all duration-200",
+        "bg-muted/20 border-border hover:border-primary/50 hover:bg-muted/40",
+        isDragging && "border-primary bg-primary/5 scale-[1.01]"
       )}
     >
-      <div className="flex flex-col items-center justify-center pt-5 pb-6">
-        <UploadCloud
+      <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
+        <div
           className={cn(
-            "w-12 h-12 mb-4 transition-colors",
-            isDragging ? "text-neutral-900" : "text-neutral-400"
+            "p-4 rounded-full bg-background border border-border mb-4 transition-colors",
+            isDragging ? "text-primary border-primary" : "text-muted-foreground"
           )}
-        />
-        <p className="mb-2 text-sm text-neutral-700">
+        >
+          <UploadCloud className="w-8 h-8" />
+        </div>
+        <p className="mb-2 text-sm text-foreground">
           <span className="font-semibold">Click to upload</span> or drag and
           drop
         </p>
-        <p className="text-xs text-neutral-500">
-          Drop your project folder here to begin
+        <p className="text-xs text-muted-foreground max-w-[200px] leading-relaxed">
+          Select your local repository folder to start packaging your context.
         </p>
       </div>
     </div>
   );
 }
+// MODIFICATION END
