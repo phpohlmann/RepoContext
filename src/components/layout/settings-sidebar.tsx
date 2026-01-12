@@ -1,14 +1,12 @@
-// MODIFICATION START
 "use client";
 
-import { Settings2, X } from "lucide-react";
+import { Settings2 } from "lucide-react";
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-  SheetClose,
 } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,23 +31,15 @@ export function SettingsSidebar() {
           Settings
         </button>
       </SheetTrigger>
-      {/* CRITICAL: Added bg-background and opacity-100 to fix transparency */}
-      <SheetContent className="w-full sm:max-w-md bg-background opacity-100 border-l border-border shadow-2xl p-0">
+      <SheetContent className="w-full sm:max-w-md bg-background border-l border-border shadow-2xl p-0">
         <div className="h-full flex flex-col">
-          <SheetHeader className="p-6 border-b border-border flex flex-row items-center justify-between space-y-0">
-            <div>
-              <SheetTitle className="text-xl font-bold tracking-tight">
-                Project Rules
-              </SheetTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                Configure exclusion filters for your scan.
-              </p>
-            </div>
-            {/* Custom Close for cleaner look */}
-            <SheetClose className="rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none">
-              <X className="h-4 w-4" />
-              <span className="sr-only">Close</span>
-            </SheetClose>
+          <SheetHeader className="p-6 border-b border-border space-y-1">
+            <SheetTitle className="text-xl font-bold tracking-tight">
+              Project Rules
+            </SheetTitle>
+            <p className="text-sm text-muted-foreground">
+              Configure exclusion filters for your scan.
+            </p>
           </SheetHeader>
 
           <div className="flex-1 overflow-y-auto p-6 space-y-8">
@@ -106,4 +96,3 @@ export function SettingsSidebar() {
     </Sheet>
   );
 }
-// MODIFICATION END
