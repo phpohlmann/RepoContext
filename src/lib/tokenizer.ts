@@ -1,11 +1,20 @@
-import { getEncoding } from "js-tiktoken";
+import type { Tiktoken } from "js-tiktoken";
 
-const encoding = getEncoding("cl100k_base");
+let encodingCache: Tiktoken | null = null;
 
-export function countTokens(text: string): number {
+async function getTokenizer(): Promise<Tiktoken> {
+  if (encodingCache) return encodingCache;
+
+  const { getEncoding } = await import("js-tiktoken");
+  encodingCache = getEncoding("cl100k_base");
+  return encodingCache;
+}
+
+export async function countTokens(text: string): Promise<number> {
   if (!text) return 0;
   try {
-    return encoding.encode(text).length;
+    const tokenizer = await getTokenizer();
+    return tokenizer.encode(text).length;
   } catch (error) {
     console.error("Tokenization error:", error);
     return 0;
