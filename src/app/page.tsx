@@ -4,23 +4,23 @@ import { DropZone } from "@/components/explorer/drop-zone";
 import { FileTree } from "@/components/explorer/file-tree";
 import { OutputViewer } from "@/components/preview/output-viewer";
 import { Header } from "@/components/layout/header";
+import { Footer } from "@/components/layout/footer"; // New Import
 import { useRepoStore } from "@/store/use-repo-store";
 
 export default function RepoContextPage() {
   const { isProcessing, root } = useRepoStore();
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <Header />
-
-      <main className="max-w-5xl mx-auto p-6 md:p-12">
+      <main className="flex-1 max-w-5xl mx-auto w-full p-6 md:p-12">
         {!root && !isProcessing && (
-          <section className="space-y-8 animate-in fade-in duration-700">
+          <section className="space-y-8 animate-in fade-in duration-700 py-12">
             <div className="text-center space-y-4">
               <h2 className="text-4xl font-extrabold tracking-tight">
                 Package your code for AI.
               </h2>
-              <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+              <p className="text-muted-foreground text-lg max-w-2xl mx-auto leading-relaxed">
                 Drag and drop your repository folder to generate a clean,
                 context-rich Markdown file for ChatGPT or Claude.
               </p>
@@ -41,8 +41,10 @@ export default function RepoContextPage() {
         {root && (
           <div className="space-y-6 animate-in zoom-in-95 duration-300">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Project Explorer</h3>
-              <span className="text-xs bg-muted px-2 py-1 rounded-md text-muted-foreground">
+              <h3 className="text-lg font-semibold tracking-tight">
+                Project Explorer
+              </h3>
+              <span className="text-[10px] font-bold uppercase bg-muted px-2 py-1 rounded-md text-muted-foreground tracking-widest border border-border/50">
                 Root: {root.name}
               </span>
             </div>
@@ -50,7 +52,7 @@ export default function RepoContextPage() {
           </div>
         )}
       </main>
-
+      <Footer /> {/* Footer added here */}
       <OutputViewer />
     </div>
   );
