@@ -1,4 +1,3 @@
-// MODIFICATION START
 "use client";
 
 import React, { useState } from "react";
@@ -9,7 +8,7 @@ import { scanDirectory } from "@/lib/file-processing/scanner";
 
 export function DropZone() {
   const [isDragging, setIsDragging] = useState(false);
-  const { setRoot, setProcessing } = useRepoStore();
+  const { setRoot, setProcessing, ignoreConfig } = useRepoStore();
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -31,7 +30,9 @@ export function DropZone() {
     if (!entry) return;
 
     setProcessing(true);
-    const tree = await scanDirectory(entry);
+
+    const tree = await scanDirectory(entry, ignoreConfig);
+
     setRoot(tree);
     setProcessing(false);
   };
@@ -67,4 +68,3 @@ export function DropZone() {
     </div>
   );
 }
-// MODIFICATION END

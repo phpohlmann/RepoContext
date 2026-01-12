@@ -1,28 +1,24 @@
 import { FileNode } from "@/store/use-repo-store";
-import { shouldIgnore } from "./ignore";
+import { shouldIgnore, IgnoreConfig } from "./ignore";
 
 export async function scanDirectory(
   entry: FileSystemEntry,
+  config: IgnoreConfig,
   path: string = ""
 ): Promise<FileNode | null> {
-  if (shouldIgnore(entry.name, entry.isDirectory)) {
+  if (shouldIgnore(entry.name, entry.isDirectory, config)) {
     return null;
   }
 
   const currentPath = path ? `${path}/${entry.name}` : entry.name;
 
   if (entry.isFile) {
-    const fileEntry = entry as FileSystemFileEntry;
-    return new Promise((resolve) => {
-      fileEntry.file(() => {
-        resolve({
-          name: entry.name,
-          path: currentPath,
-          kind: "file",
-          entry: entry,
-        });
-      });
-    });
+    return {
+      name: entry.name,
+      path: currentPath,
+      kind: "file",
+      entry: entry,
+    };
   }
 
   if (entry.isDirectory) {
@@ -45,7 +41,7 @@ export async function scanDirectory(
 
     const children = (
       await Promise.all(
-        entries.map((child) => scanDirectory(child, currentPath))
+        entries.map((child) => scanDirectory(child, config, currentPath))
       )
     ).filter((child): child is FileNode => child !== null);
 
@@ -53,7 +49,7 @@ export async function scanDirectory(
       name: entry.name,
       path: currentPath,
       kind: "directory",
-      children: children.filter((child): child is FileNode => child !== null),
+      children,
       entry: entry,
     };
   }
