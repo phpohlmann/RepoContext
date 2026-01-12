@@ -29,6 +29,7 @@ interface RepoState {
   setProcessing: (status: boolean) => void;
   togglePath: (path: string, checked: boolean) => Promise<void>;
   updateIgnoreConfig: (config: Partial<IgnoreConfig>) => void;
+  applyIgnoreRules: () => void;
   selectAll: () => Promise<void>;
   deselectAll: () => void;
 }
@@ -66,12 +67,65 @@ export const useRepoStore = create<RepoState>()(
 
       setProcessing: (status) => set({ isProcessing: status }),
 
-      updateIgnoreConfig: (config) =>
+      deselectAll: () => set({ selectedPaths: new Set(), totalTokens: 0 }),
+
+      updateIgnoreConfig: (config) => {
         set((state) => ({
           ignoreConfig: { ...state.ignoreConfig, ...config },
-        })),
+        }));
+        get().applyIgnoreRules();
+      },
 
-      deselectAll: () => set({ selectedPaths: new Set(), totalTokens: 0 }),
+      applyIgnoreRules: () => {
+        const { root, ignoreConfig, selectedPaths } = get();
+        if (!root) return;
+
+        const newSelectedPaths = new Set(selectedPaths);
+
+        const prune = (node: FileNode): FileNode | null => {
+          const name = node.name.toLowerCase();
+          const isDir = node.kind === "directory";
+
+          if (isDir && ignoreConfig.directories.includes(name)) return null;
+
+          if (!isDir) {
+            const ext = name.split(".").pop() || "";
+            if (
+              ignoreConfig.filenames.includes(name) ||
+              ignoreConfig.extensions.includes(ext)
+            ) {
+              newSelectedPaths.delete(node.path);
+              return null;
+            }
+          }
+
+          // Recursively prune children
+          if (node.children) {
+            node.children = node.children
+              .map((child) => prune(child))
+              .filter((child): child is FileNode => child !== null);
+          }
+
+          return node;
+        };
+
+        const newRoot = prune(JSON.parse(JSON.stringify(root)));
+
+        let newTotal = 0;
+        const calculate = (node: FileNode) => {
+          if (node.kind === "file" && newSelectedPaths.has(node.path)) {
+            newTotal += node.tokens || 0;
+          }
+          node.children?.forEach(calculate);
+        };
+        if (newRoot) calculate(newRoot);
+
+        set({
+          root: newRoot,
+          selectedPaths: newSelectedPaths,
+          totalTokens: newTotal,
+        });
+      },
 
       selectAll: async () => {
         const { root } = get();
@@ -92,7 +146,7 @@ export const useRepoStore = create<RepoState>()(
                 node.content = content;
                 node.tokens = countTokens(content);
               } catch (e) {
-                console.error(`Failed to read ${node.path}`, e);
+                console.error(`Read error: ${node.path}`, e);
               }
             }
             tokens += node.tokens || 0;
@@ -135,7 +189,7 @@ export const useRepoStore = create<RepoState>()(
                   node.content = content;
                   node.tokens = countTokens(content);
                 } catch (e) {
-                  console.error(`Error reading ${node.path}`, e);
+                  console.error(`Read error: ${node.path}`, e);
                 }
               }
             } else {

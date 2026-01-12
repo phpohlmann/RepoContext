@@ -1,40 +1,22 @@
-export const DEFAULT_IGNORE_DIRS = [
-  "node_modules",
-  ".git",
-  ".next",
-  "dist",
-  "build",
-  ".vscode",
-];
-export const DEFAULT_IGNORE_FILES = [
-  "package-lock.json",
-  "yarn.lock",
-  ".env",
-  ".DS_Store",
-];
-export const DEFAULT_IGNORE_EXTENSIONS = [
-  "png",
-  "jpg",
-  "jpeg",
-  "gif",
-  "svg",
-  "ico",
-  "woff",
-  "woff2",
-  "pdf",
-];
-
-export function shouldIgnore(name: string, isDirectory: boolean): boolean {
+export function shouldIgnore(
+  name: string, 
+  isDirectory: boolean, 
+  config?: { extensions: string[], filenames: string[], directories: string[] }
+): boolean {
   const lowerName = name.toLowerCase();
+  
+  const dirs = config?.directories || ['node_modules', '.git', '.next', 'dist', 'build'];
+  const files = config?.filenames || ['package-lock.json', 'yarn.lock', '.env'];
+  const exts = config?.extensions || ['png', 'jpg', 'svg', 'ico', 'pdf'];
 
   if (isDirectory) {
-    return DEFAULT_IGNORE_DIRS.includes(lowerName);
+    return dirs.includes(lowerName);
   }
 
-  const extension = lowerName.split(".").pop() || "";
-
+  const extension = lowerName.split('.').pop() || '';
+  
   return (
-    DEFAULT_IGNORE_FILES.includes(lowerName) ||
-    DEFAULT_IGNORE_EXTENSIONS.includes(extension)
+    files.includes(lowerName) ||
+    exts.includes(extension)
   );
 }
