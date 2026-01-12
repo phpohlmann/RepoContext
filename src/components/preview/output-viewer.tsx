@@ -38,7 +38,7 @@ export function OutputViewer() {
     <TooltipProvider>
       <div
         className={cn(
-          "fixed bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-6 bg-card/80 backdrop-blur-xl p-4 pr-2 rounded-2xl shadow-2xl border border-border transition-all duration-300 z-50",
+          "sticky bottom-8 self-center flex items-center gap-6 bg-card/80 backdrop-blur-xl p-4 pr-2 rounded-2xl shadow-2xl border border-border transition-all duration-300 z-40 mb-8",
           isProcessing && "opacity-50 pointer-events-none"
         )}
       >
@@ -81,7 +81,7 @@ export function OutputViewer() {
           onClick={handleCopy}
           disabled={isProcessing}
           className={cn(
-            "h-12 px-8 rounded-xl font-bold transition-all ml-4",
+            "h-12 px-8 rounded-xl font-bold transition-all ml-4 cursor-pointer",
             isCopying
               ? "bg-green-600 hover:bg-green-600 text-white"
               : "bg-primary text-primary-foreground hover:opacity-90"
