@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
 import { countTokens } from "@/lib/tokenizer";
 
 export interface FileNode {
@@ -23,6 +24,7 @@ interface RepoState {
   isProcessing: boolean;
   totalTokens: number;
   ignoreConfig: IgnoreConfig;
+
   setRoot: (node: FileNode | null) => void;
   setProcessing: (status: boolean) => void;
   togglePath: (path: string, checked: boolean) => Promise<void>;
@@ -42,122 +44,136 @@ const readFileContent = async (entry: FileSystemFileEntry): Promise<string> => {
   });
 };
 
-export const useRepoStore = create<RepoState>((set, get) => ({
-  root: null,
-  selectedPaths: new Set(),
-  isProcessing: false,
-  totalTokens: 0,
-  ignoreConfig: {
-    extensions: ["svg", "png", "jpg", "ico", "lock", "pdf"],
-    filenames: [".ds_store", "package-lock.json", "yarn.lock", ".env"],
-    directories: ["node_modules", ".next", ".git", "dist", "build"],
-  },
-
-  setRoot: (node) =>
-    set({ root: node, selectedPaths: new Set(), totalTokens: 0 }),
-  setProcessing: (status) => set({ isProcessing: status }),
-  updateIgnoreConfig: (config) =>
-    set((state) => ({ ignoreConfig: { ...state.ignoreConfig, ...config } })),
-  deselectAll: () => set({ selectedPaths: new Set(), totalTokens: 0 }),
-
-  selectAll: async () => {
-    const { root } = get();
-    if (!root) return;
-    set({ isProcessing: true });
-    console.time("Select All Processing");
-
-    const newSelected = new Set<string>();
-    let fileCount = 0;
-
-    const traverse = async (node: FileNode) => {
-      newSelected.add(node.path);
-      if (node.kind === "file") {
-        fileCount++;
-        if (!node.content && node.entry?.isFile) {
-          node.content = await readFileContent(
-            node.entry as FileSystemFileEntry
-          );
-          node.tokens = countTokens(node.content);
-        }
-      }
-      if (node.children) {
-        // Parallel recursion
-        await Promise.all(node.children.map((child) => traverse(child)));
-      }
-    };
-
-    await traverse(root);
-
-    let total = 0;
-    const calculate = (node: FileNode) => {
-      if (node.kind === "file") total += node.tokens || 0;
-      node.children?.forEach(calculate);
-    };
-    calculate(root);
-
-    console.log(`Processed ${fileCount} files.`);
-    console.timeEnd("Select All Processing");
-    set({
-      selectedPaths: newSelected,
-      totalTokens: total,
+export const useRepoStore = create<RepoState>()(
+  persist(
+    (set, get) => ({
+      root: null,
+      selectedPaths: new Set(),
       isProcessing: false,
-    });
-  },
+      totalTokens: 0,
+      ignoreConfig: {
+        extensions: ["svg", "png", "jpg", "ico", "lock", "pdf"],
+        filenames: [".ds_store", "package-lock.json", "yarn.lock", ".env"],
+        directories: ["node_modules", ".next", ".git", "dist", "build"],
+      },
 
-  togglePath: async (path, checked) => {
-    const { root, selectedPaths } = get();
-    if (!root) return;
-    set({ isProcessing: true });
-    console.time(`Toggle: ${path}`);
+      setRoot: (node) =>
+        set({
+          root: node,
+          selectedPaths: new Set(),
+          totalTokens: 0,
+        }),
 
-    const newSelected = new Set(selectedPaths);
+      setProcessing: (status) => set({ isProcessing: status }),
 
-    const findAndToggle = async (
-      node: FileNode,
-      targetPath: string,
-      isParentMatching: boolean
-    ) => {
-      const isMatch = node.path === targetPath || isParentMatching;
+      updateIgnoreConfig: (config) =>
+        set((state) => ({
+          ignoreConfig: { ...state.ignoreConfig, ...config },
+        })),
 
-      if (isMatch) {
-        if (checked) {
-          newSelected.add(node.path);
-          if (node.kind === "file" && !node.content && node.entry?.isFile) {
-            node.content = await readFileContent(
-              node.entry as FileSystemFileEntry
-            );
-            node.tokens = countTokens(node.content);
+      deselectAll: () => set({ selectedPaths: new Set(), totalTokens: 0 }),
+
+      selectAll: async () => {
+        const { root } = get();
+        if (!root) return;
+
+        set({ isProcessing: true });
+        const allPaths = new Set<string>();
+        let tokens = 0;
+
+        const traverse = async (node: FileNode) => {
+          allPaths.add(node.path);
+          if (node.kind === "file") {
+            if (!node.content && node.entry?.isFile) {
+              try {
+                const content = await readFileContent(
+                  node.entry as FileSystemFileEntry
+                );
+                node.content = content;
+                node.tokens = countTokens(content);
+              } catch (e) {
+                console.error(`Failed to read ${node.path}`, e);
+              }
+            }
+            tokens += node.tokens || 0;
           }
-        } else {
-          newSelected.delete(node.path);
-        }
-      }
+          if (node.children) {
+            await Promise.all(node.children.map((child) => traverse(child)));
+          }
+        };
 
-      if (node.children) {
-        // Parallel recursion for high speed
-        await Promise.all(
-          node.children.map((child) =>
-            findAndToggle(child, targetPath, isMatch)
-          )
-        );
-      }
-    };
+        await traverse(root);
+        set({
+          selectedPaths: allPaths,
+          totalTokens: tokens,
+          isProcessing: false,
+        });
+      },
 
-    await findAndToggle(root, path, false);
+      togglePath: async (path, checked) => {
+        const { root, selectedPaths } = get();
+        if (!root) return;
 
-    let newTotal = 0;
-    const calculate = (node: FileNode) => {
-      if (node.kind === "file" && newSelected.has(node.path))
-        newTotal += node.tokens || 0;
-      node.children?.forEach(calculate);
-    };
-    calculate(root);
+        set({ isProcessing: true });
+        const newSelected = new Set(selectedPaths);
 
-    console.timeEnd(`Toggle: ${path}`);
-    set({
-      selectedPaths: newSelected,
-      totalTokens: newTotal,
-      isProcessing: false,
-    });
-  },
-}));
+        const findAndToggle = async (
+          node: FileNode,
+          targetPath: string,
+          isParentMatching: boolean
+        ) => {
+          const isMatch = node.path === targetPath || isParentMatching;
+
+          if (isMatch) {
+            if (checked) {
+              newSelected.add(node.path);
+              if (node.kind === "file" && !node.content && node.entry?.isFile) {
+                try {
+                  const content = await readFileContent(
+                    node.entry as FileSystemFileEntry
+                  );
+                  node.content = content;
+                  node.tokens = countTokens(content);
+                } catch (e) {
+                  console.error(`Error reading ${node.path}`, e);
+                }
+              }
+            } else {
+              newSelected.delete(node.path);
+            }
+          }
+
+          if (node.children) {
+            await Promise.all(
+              node.children.map((child) =>
+                findAndToggle(child, targetPath, isMatch)
+              )
+            );
+          }
+        };
+
+        await findAndToggle(root, path, false);
+
+        let newTotal = 0;
+        const calculate = (node: FileNode) => {
+          if (node.kind === "file" && newSelected.has(node.path)) {
+            newTotal += node.tokens || 0;
+          }
+          node.children?.forEach(calculate);
+        };
+        calculate(root);
+
+        set({
+          selectedPaths: newSelected,
+          totalTokens: newTotal,
+          isProcessing: false,
+        });
+      },
+    }),
+    {
+      name: "repocontext-storage",
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({ ignoreConfig: state.ignoreConfig }),
+    }
+  )
+);
