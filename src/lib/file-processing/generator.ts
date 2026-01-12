@@ -15,7 +15,6 @@ export async function generateMarkdown(
       const extension = node.name.split(".").pop() || "";
       output += "```" + extension + "\n";
 
-      // Use the content from the node (which should now be populated)
       if (node.content) {
         output += node.content + "\n";
       } else {
@@ -26,7 +25,6 @@ export async function generateMarkdown(
     }
 
     if (node.children) {
-      // Parallel traversal for speed
       await Promise.all(node.children.map((child) => traverse(child)));
     }
   }

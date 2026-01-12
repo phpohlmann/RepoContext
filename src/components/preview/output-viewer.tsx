@@ -58,7 +58,7 @@ export function OutputViewer() {
                   className="text-muted-foreground cursor-help hover:text-foreground transition-colors"
                 />
               </TooltipTrigger>
-              <TooltipContent className="max-w-[200px] text-xs leading-relaxed">
+              <TooltipContent className="max-w-50 text-xs leading-relaxed">
                 Tokens are calculated using <strong>cl100k_base</strong>, the
                 same encoding used by GPT-4 and Claude 3.
               </TooltipContent>

@@ -14,7 +14,6 @@ export function OutlierList() {
 
   if (!root) return null;
 
-  // Logic: Find top 5 files by token count
   const getOutliers = (node: FileNode): FileNode[] => {
     const files: FileNode[] = [];
     const traverse = (n: FileNode) => {
@@ -24,7 +23,6 @@ export function OutlierList() {
       n.children?.forEach(traverse);
     };
     traverse(node);
-    // Sort descending and take top 5
     return files.sort((a, b) => (b.tokens || 0) - (a.tokens || 0)).slice(0, 5);
   };
 
@@ -52,7 +50,7 @@ export function OutlierList() {
         </div>
 
         <div className="divide-y divide-border max-h-60 overflow-y-auto">
-          {outliers.map((file, idx) => (
+          {outliers.map((file) => (
             <div
               key={file.path}
               className="p-3 hover:bg-accent/50 transition-colors flex items-center justify-between gap-4"

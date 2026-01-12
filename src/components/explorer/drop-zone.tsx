@@ -5,10 +5,12 @@ import { UploadCloud } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRepoStore } from "@/store/use-repo-store";
 import { scanDirectory } from "@/lib/file-processing/scanner";
+import { parseGitignore } from "@/lib/file-processing/ignore";
 
 export function DropZone() {
   const [isDragging, setIsDragging] = useState(false);
-  const { setRoot, setProcessing, ignoreConfig } = useRepoStore();
+  const { setRoot, setProcessing, ignoreConfig, updateIgnoreConfig } =
+    useRepoStore();
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -27,11 +29,36 @@ export function DropZone() {
     if (!items || items.length === 0) return;
 
     const entry = items[0].webkitGetAsEntry();
-    if (!entry) return;
+    if (!entry || !entry.isDirectory) return;
 
     setProcessing(true);
 
-    const tree = await scanDirectory(entry, ignoreConfig);
+    let gitRules: string[] = [];
+    const dirEntry = entry as FileSystemDirectoryEntry;
+    const reader = dirEntry.createReader();
+
+    const rootEntries = await new Promise<FileSystemEntry[]>((res) =>
+      reader.readEntries(res)
+    );
+    const gitignoreEntry = rootEntries.find((e) => e.name === ".gitignore");
+
+    if (gitignoreEntry && gitignoreEntry.isFile) {
+      const gitignoreFileEntry = gitignoreEntry as FileSystemFileEntry;
+      const content = await new Promise<string>((res) => {
+        gitignoreFileEntry.file((f) => {
+          const r = new FileReader();
+          r.onload = () => res(r.result as string);
+          r.readAsText(f);
+        });
+      });
+      gitRules = parseGitignore(content);
+      updateIgnoreConfig({ gitIgnored: gitRules });
+    }
+
+    const tree = await scanDirectory(entry, {
+      ...ignoreConfig,
+      gitIgnored: gitRules,
+    });
 
     setRoot(tree);
     setProcessing(false);
@@ -61,7 +88,7 @@ export function DropZone() {
           <span className="font-semibold">Click to upload</span> or drag and
           drop
         </p>
-        <p className="text-xs text-muted-foreground max-w-[200px] leading-relaxed">
+        <p className="text-xs text-muted-foreground max-w-50 leading-relaxed">
           Select your local repository folder to start packaging your context.
         </p>
       </div>

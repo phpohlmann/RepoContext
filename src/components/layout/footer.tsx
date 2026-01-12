@@ -1,6 +1,6 @@
 "use client";
 
-import { Github, Linkedin, Globe, Heart } from "lucide-react";
+import { Github, Linkedin, Globe} from "lucide-react";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -10,9 +10,7 @@ export function Footer() {
       <div className="max-w-5xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="flex flex-col items-center md:items-start gap-1">
           <p className="text-sm font-medium text-foreground flex items-center gap-1.5">
-            Developed with{" "}
-            <Heart size={14} className="text-red-500 fill-red-500" /> by
-            <span className="font-bold tracking-tight">Pedro Pohlmann</span>
+            Developed by Pedro Pohlmann, for developers
           </p>
           <p className="text-xs text-muted-foreground">
             © {currentYear} RepoContext • Open Source Tool

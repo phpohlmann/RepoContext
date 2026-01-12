@@ -12,10 +12,11 @@ export interface FileNode {
   entry?: FileSystemEntry;
 }
 
-interface IgnoreConfig {
+export interface IgnoreConfig {
   extensions: string[];
   filenames: string[];
   directories: string[];
+  gitIgnored: string[];
 }
 
 interface RepoState {
@@ -24,12 +25,11 @@ interface RepoState {
   isProcessing: boolean;
   totalTokens: number;
   ignoreConfig: IgnoreConfig;
-
   setRoot: (node: FileNode | null) => void;
   setProcessing: (status: boolean) => void;
   togglePath: (path: string, checked: boolean) => Promise<void>;
   updateIgnoreConfig: (config: Partial<IgnoreConfig>) => void;
-  applyIgnoreRules: () => void;
+  applyIgnoreRules: () => Promise<void>;
   selectAll: () => Promise<void>;
   deselectAll: () => void;
 }
@@ -45,6 +45,16 @@ const readFileContent = async (entry: FileSystemFileEntry): Promise<string> => {
   });
 };
 
+const deepCloneNode = (node: FileNode): FileNode => {
+  const clone: FileNode = {
+    ...node,
+    children: node.children
+      ? node.children.map((child) => deepCloneNode(child))
+      : undefined,
+  };
+  return clone;
+};
+
 export const useRepoStore = create<RepoState>()(
   persist(
     (set, get) => ({
@@ -56,17 +66,12 @@ export const useRepoStore = create<RepoState>()(
         extensions: ["svg", "png", "jpg", "ico", "lock", "pdf"],
         filenames: [".ds_store", "package-lock.json", "yarn.lock", ".env"],
         directories: ["node_modules", ".next", ".git", "dist", "build"],
+        gitIgnored: [],
       },
 
       setRoot: (node) =>
-        set({
-          root: node,
-          selectedPaths: new Set(),
-          totalTokens: 0,
-        }),
-
+        set({ root: node, selectedPaths: new Set(), totalTokens: 0 }),
       setProcessing: (status) => set({ isProcessing: status }),
-
       deselectAll: () => set({ selectedPaths: new Set(), totalTokens: 0 }),
 
       updateIgnoreConfig: (config) => {
@@ -76,9 +81,12 @@ export const useRepoStore = create<RepoState>()(
         get().applyIgnoreRules();
       },
 
-      applyIgnoreRules: () => {
+      applyIgnoreRules: async () => {
         const { root, ignoreConfig, selectedPaths } = get();
         if (!root) return;
+
+        set({ isProcessing: true });
+        await new Promise((resolve) => setTimeout(resolve, 50));
 
         const newSelectedPaths = new Set(selectedPaths);
 
@@ -99,7 +107,11 @@ export const useRepoStore = create<RepoState>()(
             }
           }
 
-          // Recursively prune children
+          if (ignoreConfig.gitIgnored.includes(name)) {
+            newSelectedPaths.delete(node.path);
+            return null;
+          }
+
           if (node.children) {
             node.children = node.children
               .map((child) => prune(child))
@@ -109,7 +121,8 @@ export const useRepoStore = create<RepoState>()(
           return node;
         };
 
-        const newRoot = prune(JSON.parse(JSON.stringify(root)));
+        const clonedRoot = deepCloneNode(root);
+        const newRoot = prune(clonedRoot);
 
         let newTotal = 0;
         const calculate = (node: FileNode) => {
@@ -124,6 +137,7 @@ export const useRepoStore = create<RepoState>()(
           root: newRoot,
           selectedPaths: newSelectedPaths,
           totalTokens: newTotal,
+          isProcessing: false,
         });
       },
 
