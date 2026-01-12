@@ -1,6 +1,5 @@
 @import "tailwindcss";
 
-/* Explicitly import the animate plugin */
 @plugin "tailwindcss-animate";
 
 @custom-variant dark (&:is(.dark *));
@@ -96,5 +95,38 @@
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
+  }
+
+  /* --- CUSTOM SCROLLBAR --- */
+  
+  /* 1. Width of the scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  /* 2. Track (The background) */
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  /* 3. Thumb (The draggable part) */
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted));
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  /* 4. Thumb on hover */
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground));
+    background-clip: content-box;
+  }
+
+  /* Firefox support */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted)) transparent;
   }
 }
