@@ -21,12 +21,13 @@ export function Header() {
 
         <div className="flex items-center gap-2">
           <OutlierList />
-          <div className="w-px h-6 bg-border mx-2" />
           <SettingsSidebar />
+
           <Button
             variant="ghost"
             size="icon"
-            className="rounded-full w-9 h-9"
+            className="rounded-full w-9 h-9 cursor-pointer"
+            aria-label="Toggle Theme"
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           >
             <Sun className="h-[1.1rem] w-[1.1rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
