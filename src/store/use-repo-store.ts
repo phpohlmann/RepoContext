@@ -84,18 +84,14 @@ export const useRepoStore = create<RepoState>()(
       applyIgnoreRules: async () => {
         const { root, ignoreConfig, selectedPaths } = get();
         if (!root) return;
-
         set({ isProcessing: true });
         await new Promise((resolve) => setTimeout(resolve, 50));
-
         const newSelectedPaths = new Set(selectedPaths);
 
-        const prune = (node: FileNode): FileNode | null => {
+        const prune = async (node: FileNode): Promise<FileNode | null> => {
           const name = node.name.toLowerCase();
           const isDir = node.kind === "directory";
-
           if (isDir && ignoreConfig.directories.includes(name)) return null;
-
           if (!isDir) {
             const ext = name.split(".").pop() || "";
             if (
@@ -106,23 +102,23 @@ export const useRepoStore = create<RepoState>()(
               return null;
             }
           }
-
           if (ignoreConfig.gitIgnored.includes(name)) {
             newSelectedPaths.delete(node.path);
             return null;
           }
-
           if (node.children) {
-            node.children = node.children
-              .map((child) => prune(child))
-              .filter((child): child is FileNode => child !== null);
+            const children = await Promise.all(
+              node.children.map((child) => prune(child))
+            );
+            node.children = children.filter(
+              (child): child is FileNode => child !== null
+            );
           }
-
           return node;
         };
 
         const clonedRoot = deepCloneNode(root);
-        const newRoot = prune(clonedRoot);
+        const newRoot = await prune(clonedRoot);
 
         let newTotal = 0;
         const calculate = (node: FileNode) => {
@@ -132,7 +128,6 @@ export const useRepoStore = create<RepoState>()(
           node.children?.forEach(calculate);
         };
         if (newRoot) calculate(newRoot);
-
         set({
           root: newRoot,
           selectedPaths: newSelectedPaths,
@@ -144,7 +139,6 @@ export const useRepoStore = create<RepoState>()(
       selectAll: async () => {
         const { root } = get();
         if (!root) return;
-
         set({ isProcessing: true });
         const allPaths = new Set<string>();
         let tokens = 0;
@@ -158,7 +152,7 @@ export const useRepoStore = create<RepoState>()(
                   node.entry as FileSystemFileEntry
                 );
                 node.content = content;
-                node.tokens = countTokens(content);
+                node.tokens = await countTokens(content);
               } catch (e) {
                 console.error(`Read error: ${node.path}`, e);
               }
@@ -181,7 +175,6 @@ export const useRepoStore = create<RepoState>()(
       togglePath: async (path, checked) => {
         const { root, selectedPaths } = get();
         if (!root) return;
-
         set({ isProcessing: true });
         const newSelected = new Set(selectedPaths);
 
@@ -191,7 +184,6 @@ export const useRepoStore = create<RepoState>()(
           isParentMatching: boolean
         ) => {
           const isMatch = node.path === targetPath || isParentMatching;
-
           if (isMatch) {
             if (checked) {
               newSelected.add(node.path);
@@ -201,7 +193,7 @@ export const useRepoStore = create<RepoState>()(
                     node.entry as FileSystemFileEntry
                   );
                   node.content = content;
-                  node.tokens = countTokens(content);
+                  node.tokens = await countTokens(content);
                 } catch (e) {
                   console.error(`Read error: ${node.path}`, e);
                 }
@@ -210,7 +202,6 @@ export const useRepoStore = create<RepoState>()(
               newSelected.delete(node.path);
             }
           }
-
           if (node.children) {
             await Promise.all(
               node.children.map((child) =>
@@ -221,7 +212,6 @@ export const useRepoStore = create<RepoState>()(
         };
 
         await findAndToggle(root, path, false);
-
         let newTotal = 0;
         const calculate = (node: FileNode) => {
           if (node.kind === "file" && newSelected.has(node.path)) {
@@ -230,7 +220,6 @@ export const useRepoStore = create<RepoState>()(
           node.children?.forEach(calculate);
         };
         calculate(root);
-
         set({
           selectedPaths: newSelected,
           totalTokens: newTotal,
