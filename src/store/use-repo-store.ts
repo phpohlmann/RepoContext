@@ -55,6 +55,17 @@ const deepCloneNode = (node: FileNode): FileNode => {
   return clone;
 };
 
+async function inBatches<T>(
+  items: T[],
+  batchSize: number,
+  task: (item: T) => Promise<void>
+) {
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    await Promise.all(batch.map((item) => task(item)));
+  }
+}
+
 export const useRepoStore = create<RepoState>()(
   persist(
     (set, get) => ({
@@ -139,13 +150,76 @@ export const useRepoStore = create<RepoState>()(
       selectAll: async () => {
         const { root } = get();
         if (!root) return;
+
         set({ isProcessing: true });
         const allPaths = new Set<string>();
-        let tokens = 0;
+        const filesToProcess: FileNode[] = [];
 
-        const traverse = async (node: FileNode) => {
+        const collect = (node: FileNode) => {
           allPaths.add(node.path);
           if (node.kind === "file") {
+            filesToProcess.push(node);
+          }
+          node.children?.forEach(collect);
+        };
+        collect(root);
+
+        await inBatches(filesToProcess, 25, async (node) => {
+          if (!node.content && node.entry?.isFile) {
+            try {
+              const content = await readFileContent(
+                node.entry as FileSystemFileEntry
+              );
+              node.content = content;
+              node.tokens = await countTokens(content);
+            } catch (e) {
+              console.error(`Read error: ${node.path}`, e);
+            }
+          }
+        });
+
+        let tokens = 0;
+        filesToProcess.forEach((f) => {
+          tokens += f.tokens || 0;
+        });
+
+        set({
+          selectedPaths: allPaths,
+          totalTokens: tokens,
+          isProcessing: false,
+        });
+      },
+
+      togglePath: async (path, checked) => {
+        const { root, selectedPaths } = get();
+        if (!root) return;
+
+        set({ isProcessing: true });
+        const newSelected = new Set(selectedPaths);
+        const affectedFiles: FileNode[] = [];
+
+        const findAffected = (
+          node: FileNode,
+          targetPath: string,
+          isParentMatching: boolean
+        ) => {
+          const isMatch = node.path === targetPath || isParentMatching;
+          if (isMatch) {
+            if (checked) {
+              newSelected.add(node.path);
+              if (node.kind === "file") affectedFiles.push(node);
+            } else {
+              newSelected.delete(node.path);
+            }
+          }
+          node.children?.forEach((child) =>
+            findAffected(child, targetPath, isMatch)
+          );
+        };
+        findAffected(root, path, false);
+
+        if (checked) {
+          await inBatches(affectedFiles, 25, async (node) => {
             if (!node.content && node.entry?.isFile) {
               try {
                 const content = await readFileContent(
@@ -157,61 +231,9 @@ export const useRepoStore = create<RepoState>()(
                 console.error(`Read error: ${node.path}`, e);
               }
             }
-            tokens += node.tokens || 0;
-          }
-          if (node.children) {
-            await Promise.all(node.children.map((child) => traverse(child)));
-          }
-        };
+          });
+        }
 
-        await traverse(root);
-        set({
-          selectedPaths: allPaths,
-          totalTokens: tokens,
-          isProcessing: false,
-        });
-      },
-
-      togglePath: async (path, checked) => {
-        const { root, selectedPaths } = get();
-        if (!root) return;
-        set({ isProcessing: true });
-        const newSelected = new Set(selectedPaths);
-
-        const findAndToggle = async (
-          node: FileNode,
-          targetPath: string,
-          isParentMatching: boolean
-        ) => {
-          const isMatch = node.path === targetPath || isParentMatching;
-          if (isMatch) {
-            if (checked) {
-              newSelected.add(node.path);
-              if (node.kind === "file" && !node.content && node.entry?.isFile) {
-                try {
-                  const content = await readFileContent(
-                    node.entry as FileSystemFileEntry
-                  );
-                  node.content = content;
-                  node.tokens = await countTokens(content);
-                } catch (e) {
-                  console.error(`Read error: ${node.path}`, e);
-                }
-              }
-            } else {
-              newSelected.delete(node.path);
-            }
-          }
-          if (node.children) {
-            await Promise.all(
-              node.children.map((child) =>
-                findAndToggle(child, targetPath, isMatch)
-              )
-            );
-          }
-        };
-
-        await findAndToggle(root, path, false);
         let newTotal = 0;
         const calculate = (node: FileNode) => {
           if (node.kind === "file" && newSelected.has(node.path)) {
@@ -220,6 +242,7 @@ export const useRepoStore = create<RepoState>()(
           node.children?.forEach(calculate);
         };
         calculate(root);
+
         set({
           selectedPaths: newSelected,
           totalTokens: newTotal,
