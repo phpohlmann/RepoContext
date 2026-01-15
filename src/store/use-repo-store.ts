@@ -25,8 +25,10 @@ interface RepoState {
   isProcessing: boolean;
   totalTokens: number;
   ignoreConfig: IgnoreConfig;
+  searchQuery: string;
   setRoot: (node: FileNode | null) => void;
   setProcessing: (status: boolean) => void;
+  setSearchQuery: (query: string) => void;
   togglePath: (path: string, checked: boolean) => Promise<void>;
   updateIgnoreConfig: (config: Partial<IgnoreConfig>) => void;
   applyIgnoreRules: () => Promise<void>;
@@ -73,6 +75,7 @@ export const useRepoStore = create<RepoState>()(
       selectedPaths: new Set(),
       isProcessing: false,
       totalTokens: 0,
+      searchQuery: "",
       ignoreConfig: {
         extensions: ["svg", "png", "jpg", "ico", "lock", "pdf"],
         filenames: [".ds_store", "package-lock.json", "yarn.lock", ".env"],
@@ -81,8 +84,14 @@ export const useRepoStore = create<RepoState>()(
       },
 
       setRoot: (node) =>
-        set({ root: node, selectedPaths: new Set(), totalTokens: 0 }),
+        set({
+          root: node,
+          selectedPaths: new Set(),
+          totalTokens: 0,
+          searchQuery: "",
+        }),
       setProcessing: (status) => set({ isProcessing: status }),
+      setSearchQuery: (query) => set({ searchQuery: query }),
       deselectAll: () => set({ selectedPaths: new Set(), totalTokens: 0 }),
 
       updateIgnoreConfig: (config) => {
@@ -95,14 +104,18 @@ export const useRepoStore = create<RepoState>()(
       applyIgnoreRules: async () => {
         const { root, ignoreConfig, selectedPaths } = get();
         if (!root) return;
+
         set({ isProcessing: true });
         await new Promise((resolve) => setTimeout(resolve, 50));
+
         const newSelectedPaths = new Set(selectedPaths);
 
         const prune = async (node: FileNode): Promise<FileNode | null> => {
           const name = node.name.toLowerCase();
           const isDir = node.kind === "directory";
+
           if (isDir && ignoreConfig.directories.includes(name)) return null;
+
           if (!isDir) {
             const ext = name.split(".").pop() || "";
             if (
@@ -113,10 +126,12 @@ export const useRepoStore = create<RepoState>()(
               return null;
             }
           }
+
           if (ignoreConfig.gitIgnored.includes(name)) {
             newSelectedPaths.delete(node.path);
             return null;
           }
+
           if (node.children) {
             const children = await Promise.all(
               node.children.map((child) => prune(child))
@@ -125,6 +140,7 @@ export const useRepoStore = create<RepoState>()(
               (child): child is FileNode => child !== null
             );
           }
+
           return node;
         };
 
@@ -139,6 +155,7 @@ export const useRepoStore = create<RepoState>()(
           node.children?.forEach(calculate);
         };
         if (newRoot) calculate(newRoot);
+
         set({
           root: newRoot,
           selectedPaths: newSelectedPaths,
@@ -173,7 +190,7 @@ export const useRepoStore = create<RepoState>()(
               node.content = content;
               node.tokens = await countTokens(content);
             } catch (e) {
-              console.error(`Read error: ${node.path}`, e);
+              console.error(e);
             }
           }
         });
@@ -228,7 +245,7 @@ export const useRepoStore = create<RepoState>()(
                 node.content = content;
                 node.tokens = await countTokens(content);
               } catch (e) {
-                console.error(`Read error: ${node.path}`, e);
+                console.error(e);
               }
             }
           });

@@ -1,7 +1,7 @@
 // MODIFICATION START
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   ChevronRight,
   ChevronDown,
@@ -34,7 +34,6 @@ const FileIcon = ({
     "w-4 h-4",
     isSelected ? "text-primary" : "text-muted-foreground/70"
   );
-
   if (["js", "ts", "jsx", "tsx"].includes(ext || ""))
     return <FileCode className={className} />;
   if (["json", "yaml", "yml"].includes(ext || ""))
@@ -45,11 +44,49 @@ const FileIcon = ({
 };
 
 export function TreeNode({ node, level }: TreeNodeProps) {
-  const [isOpen, setIsOpen] = useState(level < 1); // Auto-open root
-  const { selectedPaths, togglePath, isProcessing } = useRepoStore();
+  const { selectedPaths, togglePath, isProcessing, searchQuery } =
+    useRepoStore();
+
+  // 1. Local State
+  const [isOpen, setIsOpen] = useState(level < 1);
+  const [prevSearchQuery, setPrevSearchQuery] = useState(searchQuery);
 
   const isSelected = selectedPaths.has(node.path);
   const isDirectory = node.kind === "directory";
+
+  // 🧠 PROXIMITY SEARCH LOGIC
+  const searchResults = useMemo(() => {
+    if (!searchQuery)
+      return { isVisible: true, isDirectMatch: false, shouldExpand: false };
+    const query = searchQuery.toLowerCase();
+
+    const checkNode = (n: FileNode): boolean => {
+      if (n.name.toLowerCase().includes(query)) return true;
+      if (n.children) return n.children.some((child) => checkNode(child));
+      return false;
+    };
+
+    const isDirectMatch = node.name.toLowerCase().includes(query);
+    const hasMatchingDescendant = node.children?.some((child) =>
+      checkNode(child)
+    );
+    const isVisible = isDirectMatch || hasMatchingDescendant;
+
+    return { isVisible, isDirectMatch, shouldExpand: hasMatchingDescendant };
+  }, [node, searchQuery]);
+
+  /**
+   * 🛠️ SENIOR FIX: Adjusting state during render
+   * This replaces useEffect to avoid cascading renders and satisfy the linter.
+   */
+  if (searchQuery !== prevSearchQuery) {
+    setPrevSearchQuery(searchQuery);
+    if (searchQuery && searchResults.shouldExpand) {
+      setIsOpen(true);
+    }
+  }
+
+  if (searchQuery && !searchResults.isVisible) return null;
 
   const handleToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -57,17 +94,19 @@ export function TreeNode({ node, level }: TreeNodeProps) {
   };
 
   return (
-    <div className="group">
+    <div className="group animate-in fade-in duration-200">
       <div
         onClick={handleToggle}
         className={cn(
           "flex items-center py-1.5 px-2 hover:bg-accent/50 cursor-pointer transition-all duration-150 relative border-l-2 border-transparent",
           isSelected && "bg-primary/5 border-l-primary/50",
-          isProcessing && "opacity-60 pointer-events-none"
+          isProcessing && "opacity-60 pointer-events-none",
+          searchQuery &&
+            !searchResults.isDirectMatch &&
+            "opacity-40 grayscale-[0.5]"
         )}
         style={{ paddingLeft: `${level * 16 + 8}px` }}
       >
-        {/* Visual Depth Line */}
         {level > 0 && (
           <div
             className="absolute left-0 top-0 bottom-0 w-px bg-border/40 group-hover:bg-border transition-colors"
@@ -80,7 +119,7 @@ export function TreeNode({ node, level }: TreeNodeProps) {
             checked={isSelected}
             onCheckedChange={(checked) => togglePath(node.path, !!checked)}
             onClick={(e) => e.stopPropagation()}
-            className="h-4 w-4 border-muted-foreground/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+            className="h-4 w-4 border-muted-foreground/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary cursor-pointer"
           />
 
           <div className="flex items-center gap-2 min-w-0">
@@ -98,10 +137,13 @@ export function TreeNode({ node, level }: TreeNodeProps) {
 
             <span
               className={cn(
-                "text-sm truncate transition-colors",
+                "text-sm truncate transition-all",
                 isSelected
                   ? "text-foreground font-medium"
-                  : "text-muted-foreground"
+                  : "text-muted-foreground",
+                searchQuery &&
+                  searchResults.isDirectMatch &&
+                  "text-primary font-bold scale-105 origin-left"
               )}
             >
               {node.name}
@@ -109,7 +151,6 @@ export function TreeNode({ node, level }: TreeNodeProps) {
           </div>
         </div>
 
-        {/* Token Badge for Files */}
         {!isDirectory && node.tokens !== undefined && isSelected && (
           <div className="ml-2 flex items-center">
             <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground border border-border">
@@ -118,16 +159,19 @@ export function TreeNode({ node, level }: TreeNodeProps) {
           </div>
         )}
 
-        {/* Chevron only for directories */}
         {isDirectory && (
-          <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
-            {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity flex items-center">
+            {isOpen ? (
+              <ChevronDown size={14} className="cursor-pointer" />
+            ) : (
+              <ChevronRight size={14} className="cursor-pointer" />
+            )}
           </div>
         )}
       </div>
 
       {isDirectory && isOpen && node.children && (
-        <div className="animate-in fade-in slide-in-from-left-1 duration-200">
+        <div>
           {node.children.map((child) => (
             <TreeNode key={child.path} node={child} level={level + 1} />
           ))}
